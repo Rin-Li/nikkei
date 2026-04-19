@@ -1,5 +1,5 @@
 # Switch provider here: anthropic | openai | gemini | kimi
-active_provider: "anthropic"
+active_provider: "gemini"
 
 providers:
   anthropic:
@@ -9,16 +9,16 @@ providers:
     base_url: null
 
   openai:
-    api_key_env: "OPENAI_API_KEY"
+    api_key_env: ""
     model: "gpt-4o-mini"
     max_tokens: 1024
     base_url: null
 
   gemini:
     api_key_env: "GEMINI_API_KEY"
-    model: "gemini-2.0-flash"
+    model: "gemini-3-flash-preview"
     max_tokens: 1024
-    base_url: "https://generativelanguage.googleapis.com/v1beta/openai/"
+    search_grounding: false
 
   kimi:
     api_key_env: "KIMI_API_KEY"

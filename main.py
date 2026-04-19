@@ -27,9 +27,9 @@ def main():
     df = DataLoader(config).load_and_filter()
     logging.info(f"Loaded {len(df)} companies to analyze")
 
-    results = asyncio.run(Analyzer(config).analyze_all(df))
-
-    Reporter(config).save_results(results)
+    reporter = Reporter(config)
+    asyncio.run(Analyzer(config).analyze_all(df, on_result=reporter.add_result))
+    reporter.finalize()
 
 
 if __name__ == "__main__":

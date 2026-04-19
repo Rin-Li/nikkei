@@ -23,6 +23,11 @@ class Analyzer:
         if provider_name == "anthropic":
             self._provider = "anthropic"
             self._client = anthropic.AsyncAnthropic(api_key=api_key)
+        elif provider_name == "gemini":
+            from google import genai
+            self._provider = "gemini"
+            self._gemini_client = genai.Client(api_key=api_key)
+            self._gemini_search = provider_cfg.get("search_grounding", False)
         else:
             self._provider = "openai_compat"
             self._client = openai.AsyncOpenAI(
@@ -36,8 +41,14 @@ class Analyzer:
         self._system_prompt = config["prompts"]["system"]
         self._user_template = config["prompts"]["user_template"]
 
-    async def analyze_all(self, df: pd.DataFrame) -> list[dict]:
-        tasks = [self._analyze_with_retry(row) for _, row in df.iterrows()]
+    async def analyze_all(self, df: pd.DataFrame, on_result=None) -> list[dict]:
+        async def _wrap(row):
+            result = await self._analyze_with_retry(row)
+            if on_result:
+                on_result(result)
+            return result
+
+        tasks = [_wrap(row) for _, row in df.iterrows()]
         return await tqdm_asyncio.gather(*tasks, desc="Analyzing companies", total=len(tasks))
 
     async def _analyze_with_retry(self, row: pd.Series) -> dict:
@@ -94,6 +105,8 @@ class Analyzer:
                 timeout=timeout,
             )
             text = next(b.text for b in response.content if b.type == "text")
+        elif self._provider == "gemini":
+            text = await self._analyze_with_gemini_search(user_prompt, timeout)
         else:
             response = await asyncio.wait_for(
                 self._client.chat.completions.create(
@@ -118,6 +131,30 @@ class Analyzer:
             "scale": row.get("scale", "-"),
             **parsed,
         }
+
+    async def _analyze_with_gemini_search(self, user_prompt: str, timeout: float) -> str:
+        from google.genai import types
+
+        full_prompt = self._system_prompt + "\n\n" + user_prompt
+
+        def _call():
+            cfg = types.GenerateContentConfig(max_output_tokens=self._max_tokens)
+            if self._gemini_search:
+                cfg = types.GenerateContentConfig(
+                    max_output_tokens=self._max_tokens,
+                    tools=[types.Tool(google_search=types.GoogleSearch())],
+                )
+            return self._gemini_client.models.generate_content(
+                model=self._model,
+                contents=full_prompt,
+                config=cfg,
+            )
+
+        response = await asyncio.wait_for(
+            asyncio.get_event_loop().run_in_executor(None, _call),
+            timeout=timeout,
+        )
+        return response.text or ""
 
     def _parse_response(self, text: str, row: pd.Series) -> dict:
         try:
