@@ -1,0 +1,82 @@
+# Switch provider here: anthropic | openai | gemini | kimi
+active_provider: "anthropic"
+
+providers:
+  anthropic:
+    api_key_env: "ANTHROPIC_API_KEY"
+    model: "claude-haiku-4-5-20251001"
+    max_tokens: 1024
+    base_url: null
+
+  openai:
+    api_key_env: "OPENAI_API_KEY"
+    model: "gpt-4o-mini"
+    max_tokens: 1024
+    base_url: null
+
+  gemini:
+    api_key_env: "GEMINI_API_KEY"
+    model: "gemini-2.0-flash"
+    max_tokens: 1024
+    base_url: "https://generativelanguage.googleapis.com/v1beta/openai/"
+
+  kimi:
+    api_key_env: "KIMI_API_KEY"
+    model: "moonshot-v1-8k"
+    max_tokens: 1024
+    base_url: "https://api.moonshot.cn/v1"
+
+concurrency:
+  max_concurrent_requests: 15
+  retry_max_attempts: 4
+  retry_base_delay: 2.0
+  retry_max_delay: 60.0
+  request_timeout: 30.0
+
+target_sectors:
+  - "機械"
+  - "化学"
+  - "電気機器"
+  - "精密機器"
+  - "建設業"
+  - "ガラス・土石製品"
+
+data:
+  input_file: "data_j.xls"
+  output_dir: "output"
+  output_filename: "ai_semiconductor_analysis.csv"
+
+prompts:
+  system: |
+    You are an expert analyst specializing in the global AI and semiconductor manufacturing supply chain.
+    You have deep knowledge of Japanese industry, electronics manufacturing, precision equipment,
+    chemicals used in chip fabrication, and construction of semiconductor facilities.
+    Note: Japanese companies in construction/glass/stone sectors often supply specialty materials
+    (high-purity quartz, specialty gases, cleanroom construction) critical to semiconductor fabs.
+    Always respond in valid JSON matching the exact schema provided.
+
+  user_template: |
+    Analyze the following Japanese listed company and determine its relevance to the AI and semiconductor manufacturing supply chain.
+
+    Company Information:
+    - Name: {company_name}
+    - Stock Code: {stock_code}
+    - Industry (33-sector): {industry_33}
+    - Industry (17-sector): {industry_17}
+    - Market: {market}
+    - Scale: {scale}
+
+    Respond with ONLY a JSON object in this exact format:
+    {{
+      "summary": "<2-3 sentence description of what the company does>",
+      "is_ai_related": <true or false>,
+      "role": "<one of: semiconductor_materials, semiconductor_equipment, chip_design, chip_manufacturing, pcb_assembly, electronic_components, data_center_construction, cooling_systems, industrial_gases, photoresists_chemicals, precision_optics, testing_equipment, specialty_glass_quartz, cleanroom_construction, logistics_support, general_construction, unrelated, other>",
+      "score": <integer 1-10, where 10 is directly critical to AI/semiconductor supply chain>
+    }}
+
+    Scoring guide:
+    - 9-10: Core semiconductor materials, fab equipment, EUV optics, photoresists, wafer producers
+    - 7-8: Key electronic components, PCB manufacturers, fab construction specialists, specialty gases
+    - 5-6: Indirect suppliers (precision tools, specialty chemicals, cleanroom materials)
+    - 3-4: General industrial with minor semiconductor exposure
+    - 1-2: Completely unrelated
